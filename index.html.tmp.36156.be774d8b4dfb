@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>In-Game Calendar — Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design Tokens — In Game Calendar brand ──────────────────────── */
+    :root {
+      --bg:           #0d0c09;
+      --bg-card:      #131109;
+      --bg-code:      #0a0900;
+      --border:       #2a2208;
+      --border-light: #3a3010;
+      --gold:         #f5a800;
+      --gold-dim:     #c98a00;
+      --gold-glow:    rgba(245,168,0,0.12);
+      --white:        #ffffff;
+      --red:          #e03030;
+      --green:        #5fba47;
+      --text:         #c8b896;
+      --text-dim:     #6b5c3e;
+      --text-head:    #f0e8d8;
+      --sidebar-w:    264px;
+    }
+
+    /* ── Reset ───────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* ── Layout ──────────────────────────────────────────────────────── */
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+    }
+
+    /* Logo block — echoes the card art: dark bg, gold type, white headline */
+    .sidebar-logo {
+      padding: 0;
+      border-bottom: 2px solid var(--gold);
+      background: #0a0900;
+      position: relative;
+      overflow: hidden;
+    }
+    /* subtle diagonal grain lines */
+    .sidebar-logo::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        -55deg,
+        transparent,
+        transparent 3px,
+        rgba(245,168,0,0.025) 3px,
+        rgba(245,168,0,0.025) 4px
+      );
+      pointer-events: none;
+    }
+    .sidebar-logo-inner {
+      position: relative;
+      padding: 20px 18px 16px;
+    }
+    .sidebar-logo .product-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--white);
+      line-height: 1.05;
+    }
+    .sidebar-logo .product-name em {
+      display: block;
+      color: var(--gold);
+      font-style: normal;
+    }
+    .sidebar-logo .doc-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-top: 8px;
+      border-top: 1px solid var(--border-light);
+      padding-top: 8px;
+    }
+    .sidebar-logo .publisher {
+      font-size: 10px;
+      color: var(--gold-dim);
+      margin-top: 4px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .sidebar nav { padding: 10px 0 24px; flex: 1; }
+    .nav-section {
+      padding: 12px 18px 4px;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .sidebar a {
+      display: block;
+      padding: 5px 18px 5px 26px;
+      font-size: 13px;
+      color: var(--text);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+    }
+    .sidebar a:hover {
+      color: var(--gold);
+      background: var(--gold-glow);
+    }
+    .sidebar a.active {
+      color: var(--gold);
+      border-left-color: var(--gold);
+      background: var(--gold-glow);
+      font-weight: 600;
+    }
+    .sidebar a.sub {
+      padding-left: 38px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .sidebar a.sub:hover { color: var(--gold); }
+    .sidebar-footer {
+      padding: 14px 18px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .sidebar-footer a {
+      color: var(--gold-dim);
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 4px;
+    }
+    .sidebar-footer a:hover { color: var(--gold); }
+
+    /* ── Topbar ──────────────────────────────────────────────────────── */
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: var(--sidebar-w);
+      right: 0;
+      height: 46px;
+      background: rgba(13,12,9,0.94);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 52px;
+      z-index: 50;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .topbar a {
+      color: var(--gold-dim);
+      text-decoration: none;
+      margin-left: 20px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      transition: color 0.15s;
+    }
+    .topbar a:hover { color: var(--gold); }
+
+    /* ── Main Content ────────────────────────────────────────────────── */
+    .content {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      max-width: 860px;
+      padding: 72px 52px 80px;
+    }
+
+    /* ── Breadcrumb ──────────────────────────────────────────────────── */
+    .breadcrumb {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-bottom: 28px;
+      letter-spacing: 0.03em;
+    }
+    .breadcrumb span { color: var(--gold); }
+
+    /* ── Page header ─────────────────────────────────────────────────── */
+    .page-header {
+      margin-bottom: 40px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 52px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      line-height: 1.0;
+      color: var(--white);
+      margin-bottom: 6px;
+    }
+    h1 em {
+      font-style: normal;
+      color: var(--gold);
+      display: block;
+    }
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--text-dim);
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 10px;
+    }
+
+    /* ── Section headings ────────────────────────────────────────────── */
+    h2 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-head);
+      margin: 52px 0 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 22px;
+      background: var(--gold);
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    h3 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gold);
+      margin: 26px 0 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    p { margin-bottom: 14px; }
+    strong { color: var(--text-head); font-weight: 600; }
+    a { color: var(--gold); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    section { padding-top: 4px; }
+    ul { margin-left: 20px; }
+    li { margin-bottom: 4px; }
+
+    /* ── Code ────────────────────────────────────────────────────────── */
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      background: var(--bg-code);
+      color: var(--gold);
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+    pre {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--gold);
+      border-radius: 6px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      margin: 14px 0 18px;
+    }
+    pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 12.5px;
+      color: var(--text);
+      line-height: 1.65;
+    }
+    .kw { color: #d4a0ff; }
+    .ty { color: #82c4ff; }
+    .cm { color: var(--text-dim); font-style: italic; }
+    .st { color: #a8d070; }
+    .nm { color: #ffb060; }
+    .cy { color: var(--gold); }
+
+    /* ── Tables ──────────────────────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 22px;
+      font-size: 13.5px;
+    }
+    th {
+      background: #1a1508;
+      color: var(--gold);
+      font-weight: 700;
+      text-align: left;
+      padding: 9px 14px;
+      border: 1px solid var(--border);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    td {
+      padding: 9px 14px;
+      border: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:nth-child(even) td { background: rgba(245,168,0,0.03); }
+    td code { font-size: 12px; }
+
+    /* ── Callout boxes ───────────────────────────────────────────────── */
+    .callout {
+      border-radius: 6px;
+      padding: 13px 16px;
+      margin: 16px 0;
+      font-size: 13.5px;
+      border-left: 3px solid;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .callout-icon { font-size: 15px; flex-shrink: 0; margin-top: 2px; }
+    .callout.tip   { background: rgba(245,168,0,0.07); border-color: var(--gold); }
+    .callout.warn  { background: rgba(224,48,48,0.07); border-color: var(--red); color: #f0b0a0; }
+    .callout.note  { background: rgba(255,255,255,0.04); border-color: #666; }
+    .callout.good  { background: rgba(95,186,71,0.07); border-color: var(--green); }
+
+    /* ── Screenshot placeholder ──────────────────────────────────────── */
+    .screenshot {
+      width: 100%;
+      border-radius: 6px;
+      border: 1px dashed var(--border-light);
+      background: #0f0d07;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 36px 24px;
+      margin: 18px 0;
+      text-align: center;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+    .screenshot::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        -55deg, transparent, transparent 4px,
+        rgba(245,168,0,0.015) 4px, rgba(245,168,0,0.015) 5px
+      );
+    }
+    .screenshot .ph-icon { font-size: 32px; opacity: 0.25; position: relative; }
+    .screenshot .ph-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--gold-dim);
+      letter-spacing: 0.12em;
+      position: relative;
+    }
+    .screenshot .ph-desc {
+      font-size: 12.5px;
+      color: var(--text-dim);
+      max-width: 440px;
+      position: relative;
+    }
+
+    /* ── Property list ───────────────────────────────────────────────── */
+    .prop-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 18px; }
+    .prop {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 10px 14px;
+      display: grid;
+      grid-template-columns: 210px 1fr;
+      gap: 8px;
+      align-items: start;
+    }
+    .prop-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--gold);
+    }
+    .prop-type {
+      font-size: 10.5px;
+      color: var(--text-dim);
+      margin-top: 3px;
+      letter-spacing: 0.04em;
+    }
+    .prop-desc { font-size: 13px; }
+
+    /* ── Badges ──────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 3px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .badge-gold  { background: rgba(245,168,0,0.18); color: var(--gold); }
+    .badge-red   { background: rgba(224,48,48,0.18); color: var(--red); }
+    .badge-green { background: rgba(95,186,71,0.18); color: var(--green); }
+
+    /* ── Step list ───────────────────────────────────────────────────── */
+    .steps { display: flex; flex-direction: column; gap: 3px; margin: 12px 0; }
+    .step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 11px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+    }
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 3px;
+      background: var(--gold);
+      color: #0a0900;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 900;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-body { flex: 1; font-size: 13.5px; }
+    .step-body strong { display: block; margin-bottom: 2px; color: var(--text-head); }
+
+    /* ── Folder tree ─────────────────────────────────────────────────── */
+    .tree {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.85;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--gold);
+      border-radius: 6px;
+      padding: 16px 20px;
+      margin: 12px 0 18px;
+      color: var(--text);
+    }
+    .tree .dir  { color: var(--gold); }
+    .tree .file { color: var(--text); }
+    .tree .note { color: var(--text-dim); }
+
+    /* ── Responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .content { margin-left: 0; padding: 68px 20px 60px; }
+      .topbar { left: 0; padding: 0 20px; }
+      .prop { grid-template-columns: 1fr; }
+      h1 { font-size: 36px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-inner">
+      <div class="product-name">In Game<em>Calendar</em></div>
+      <div class="doc-title">Documentation</div>
+      <div class="publisher">Chris Burns</div>
+    </div>
+  </div>
+  <nav>
+    <div class="nav-section">Getting Started</div>
+    <a href="#overview">Overview</a>
+    <a href="#requirements">Requirements</a>
+    <a href="#package-contents">Package Contents</a>
+    <a href="#quick-start">Quick Start</a>
+
+    <div class="nav-section">Components</div>
+    <a href="#game-calendar">GameCalendar</a>
+    <a class="sub" href="#gc-inspector">Inspector Properties</a>
+    <a class="sub" href="#gc-api">Public API</a>
+    <a class="sub" href="#gc-events">Events</a>
+    <a href="#wall-calendar">WallCalendar</a>
+    <a class="sub" href="#wc-inspector">Inspector Properties</a>
+    <a class="sub" href="#wc-setup">Scene Setup</a>
+    <a href="#day-marker">DayMarker</a>
+    <a href="#page-turn">CalendarPageTurn</a>
+    <a href="#sun-controller">SunController</a>
+
+    <div class="nav-section">Guides</div>
+    <a href="#texture-atlas">Texture Atlas</a>
+    <a href="#custom-art">Custom Art</a>
+    <a href="#week-start">Week Start Day</a>
+    <a href="#time-scale">Time Speed</a>
+    <a href="#scripting">Scripting Integration</a>
+
+    <div class="nav-section">Reference</div>
+    <a href="#faq">FAQ</a>
+    <a href="#changelog">Changelog</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div>Unity Asset Store</div>
+    <a href="https://assetstore.unity.com/packages/slug/384708" target="_blank">View on Store ↗</a><br/>
+    <a href="https://discord.gg/DSUd2QcyHZ" target="_blank">Discord Support ↗</a><br/>
+    <a href="https://chrisburns.com.au" target="_blank">chrisburns.com.au ↗</a>
+  </div>
+</aside>
+
+<!-- ── Topbar ────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <span>In-Game Calendar — Chris Burns</span>
+  <div>
+    <a href="https://assetstore.unity.com/packages/slug/384708" target="_blank">Asset Store</a>
+    <a href="https://discord.gg/DSUd2QcyHZ" target="_blank">Discord</a>
+    <a href="https://github.com/LuDiChRiS000/In-Game-Calendar-Docs" target="_blank">GitHub</a>
+  </div>
+</div>
+
+<!-- ── Main ──────────────────────────────────────────────────────────── -->
+<main class="content">
+
+  <div class="breadcrumb">Chris Burns<span>/</span> In-Game Calendar <span>/</span> Documentation</div>
+
+  <div class="page-header">
+    <h1>In Game<em>Calendar</em></h1>
+    <div class="page-subtitle">A Dynamic Wall Calendar for Unity</div>
+  </div>
+
+  <div class="screenshot">
+    <img src="hero.png" alt="WallCalendar prop in demo scene showing month illustration, day grid with red X marks, and sun lighting">
+  </div>
+
+  <!-- ── Overview ────────────────────────────────────────────────────── -->
+  <section id="overview">
+    <h2>Overview</h2>
+    <p>In-Game Calendar gives your game world a living, functional sense of time. A single <code>GameCalendar</code> scene singleton drives everything — either mirroring the player's real system clock or advancing at a configurable in-game speed. The <code>WallCalendar</code> prop reads from it every day tick and updates a 3D wall calendar mesh: the correct month illustration is shown, days that have passed are crossed off in red, and today's cell is highlighted.</p>
+    <p>When the month rolls over, the <code>CalendarPageTurn</code> component plays a skinned mesh page-turn animation, snapping a texture of the completed calendar before the new month loads in. A <code>SunController</code> demo component drives a directional light as a sun with seasonal arc variation.</p>
+  </section>
+
+  <!-- ── Requirements ────────────────────────────────────────────────── -->
+  <section id="requirements">
+    <h2>Requirements</h2>
+    <table>
+      <tr><th>Requirement</th><th>Detail</th></tr>
+      <tr><td><strong>Unity Version</strong></td><td>2022.3 LTS or higher</td></tr>
+      <tr><td><strong>TextMeshPro</strong></td><td>Required — install via Package Manager if not present</td></tr>
+      <tr><td><strong>Render Pipeline</strong></td><td>URP, HDRP, and Built-in all supported</td></tr>
+      <tr><td><strong>Scripting Backend</strong></td><td>Mono and IL2CPP both supported</td></tr>
+      <tr><td><strong>Platforms</strong></td><td>All Unity-supported platforms</td></tr>
+    </table>
+    <div class="callout note">
+      <div class="callout-icon">📝</div>
+      <div>If TextMeshPro is not in your project, go to <strong>Window → Package Manager → TextMeshPro</strong> and install it before importing this asset. When prompted, also import the TMP Essential Resources.</div>
+    </div>
+  </section>
+
+  <!-- ── Package Contents ─────────────────────────────────────────────── -->
+  <section id="package-contents">
+    <h2>Package Contents</h2>
+    <div class="tree">
+<span class="dir">InGameCalendar/</span>
+├── <span class="dir">Animation/</span>
+│   ├── <span class="file">PageTurn.anim</span>             <span class="note">— skinned mesh page-turn animation clip</span>
+│   └── <span class="file">WallCalendar.controller</span>   <span class="note">— animator controller with PageTurn trigger</span>
+├── <span class="dir">Audio/</span>
+│   └── <span class="file">WallCalendarPageTurn.wav</span>  <span class="note">— paper page-turn sound effect</span>
+├── <span class="dir">Demo/</span>
+│   ├── <span class="file">DemoScene.unity</span>           <span class="note">— fully configured demo scene</span>
+│   └── <span class="dir">Scripts/</span>
+│       └── <span class="file">SunController.cs</span>      <span class="note">— directional light sun driver</span>
+├── <span class="dir">Fonts/</span>
+│   ├── <span class="file">GochiHand-Regular SDF.asset</span>   <span class="note">— handwritten font for X marks</span>
+│   └── <span class="file">Roboto-VariableFont SDF.asset</span> <span class="note">— day number labels</span>
+├── <span class="dir">Materials/</span>
+│   ├── <span class="file">Calendar.mat</span>
+│   ├── <span class="file">Calendar-Landscapes.mat</span>
+│   ├── <span class="file">CalendarDaysMondayStart.mat</span>
+│   └── <span class="file">CalendarDaysSundayStart.mat</span>
+├── <span class="dir">Models/</span>
+│   └── <span class="file">WallCalendar.fbx</span>          <span class="note">— optimised wall calendar mesh</span>
+├── <span class="dir">Prefabs/</span>
+│   ├── <span class="file">WallCalendar.prefab</span>        <span class="note">— ready-to-use calendar (default art)</span>
+│   ├── <span class="file">WallCalendar-Landscapes.prefab</span>
+│   ├── <span class="file">DayMarker.prefab</span>           <span class="note">— single day cell prefab</span>
+│   └── <span class="file">DaysOfTheWeek.prefab</span>       <span class="note">— day-of-week column headers</span>
+├── <span class="dir">Scripts/</span>
+│   ├── <span class="file">GameCalendar.cs</span>
+│   ├── <span class="file">WallCalendar.cs</span>
+│   ├── <span class="file">DayMarker.cs</span>
+│   ├── <span class="file">CalendarPageTurn.cs</span>
+│   └── <span class="dir">Editor/</span>
+│       └── <span class="file">WallCalendarEditor.cs</span>
+└── <span class="dir">Textures/</span>
+    ├── <span class="file">CalendarImages.png</span>              <span class="note">— default 4×4 atlas</span>
+    ├── <span class="file">InGameCalendar-Cars.png</span>         <span class="note">— cars theme atlas</span>
+    ├── <span class="file">InGameCalendar-Landscapes.png</span>   <span class="note">— landscapes theme atlas</span>
+    ├── <span class="file">WallCalendarMondayStartRT.renderTexture</span>
+    └── <span class="file">WallCalendarSundayStartRT.renderTexture</span>
+    </div>
+  </section>
+
+  <!-- ── Quick Start ──────────────────────────────────────────────────── -->
+  <section id="quick-start">
+    <h2>Quick Start</h2>
+
+    <div class="screenshot">
+      <div class="ph-icon">🎬</div>
+      <div class="ph-label">[ SCREENSHOT ]</div>
+      <div class="ph-desc">Demo scene open in Unity Editor — hierarchy panel showing WallCalendar, GameCalendar, and SunController objects</div>
+    </div>
+
+    <h3>Option A — Use the Demo Scene</h3>
+    <p>Open <code>InGameCalendar/Demo/DemoScene</code> and press Play. Everything is already connected.</p>
+
+    <h3>Option B — Add to your own scene</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Add the GameCalendar</strong>
+          Create an empty GameObject (e.g. <em>_GameSystems</em>) and add the <code>GameCalendar</code> component via <strong>Add Component → In Game Calendar → Game Calendar</strong>. Configure the starting date and time speed in the Inspector.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Drop in the prefab</strong>
+          Drag <code>InGameCalendar/Prefabs/WallCalendar.prefab</code> (or <code>WallCalendar-Landscapes.prefab</code>) into your scene. Position and rotate it on your wall surface.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Press Play</strong>
+          The WallCalendar auto-finds the GameCalendar singleton. The grid, X marks, and month label update immediately. No further setup required for a basic configuration.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>(Optional) Add the page-turn animator</strong>
+          Add a <code>CalendarPageTurn</code> component to the same GameObject (or any object in the scene). Assign the animated page Renderer and RenderTexture references. See the <a href="#page-turn">CalendarPageTurn</a> section for full setup.
+        </div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-icon">💡</div>
+      <div>Right-click the <strong>WallCalendar</strong> component header and select <em>Force Refresh (Editor)</em> to preview the calendar visuals without entering Play Mode.</div>
+    </div>
+  </section>
+
+  <!-- ── GameCalendar ─────────────────────────────────────────────────── -->
+  <section id="game-calendar">
+    <h2>GameCalendar <span class="badge badge-gold">Singleton</span></h2>
+    <p>Scene singleton that tracks in-game date and time. Add once to a persistent GameObject. All other components find it automatically via <code>GameCalendar.Instance</code>.</p>
+    <p><strong>Namespace:</strong> <code>ChrisBurns.InGameCalendar</code></p>
+
+    <div class="screenshot">
+      <div class="ph-icon">🖥</div>
+      <div class="ph-label">[ SCREENSHOT ]</div>
+      <div class="ph-desc">GameCalendar Inspector — showing Mode toggle, Starting Date fields (Year, Month, Day, Hour), and Time Speed slider</div>
+    </div>
+
+    <section id="gc-inspector">
+      <h3>Inspector Properties</h3>
+      <div class="prop-list">
+        <div class="prop">
+          <div><div class="prop-name">useRealWorldClock</div><div class="prop-type">bool</div></div>
+          <div class="prop-desc">When enabled, the game clock mirrors the player's system date and time exactly. Starting date and time speed settings are ignored.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">startYear</div><div class="prop-type">int</div></div>
+          <div class="prop-desc">The year the in-game clock begins at. (In-game mode only.)</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">startMonth</div><div class="prop-type">CalendarMonth enum</div></div>
+          <div class="prop-desc">The month the in-game clock begins at. (In-game mode only.)</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">startDay</div><div class="prop-type">int</div></div>
+          <div class="prop-desc">Day of the month the in-game clock begins at. (In-game mode only.)</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">startHour</div><div class="prop-type">float (0–23)</div></div>
+          <div class="prop-desc">Hour of the day the clock begins at. (In-game mode only.)</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">gameMinutesPerRealSecond</div><div class="prop-type">float</div></div>
+          <div class="prop-desc">
+            How many in-game minutes pass per real-world second.<br/>
+            <code>1</code> = real time (1 day = 24 real hours)<br/>
+            <code>60</code> = 1 game hour per real second (~24s per day)<br/>
+            <code>1440</code> = 1 full game day per real second
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="gc-api">
+      <h3>Public API</h3>
+      <table>
+        <tr><th>Member</th><th>Type</th><th>Description</th></tr>
+        <tr><td><code>Instance</code></td><td>static property</td><td>Scene singleton reference</td></tr>
+        <tr><td><code>Year</code></td><td>int (read-only)</td><td>Current in-game year</td></tr>
+        <tr><td><code>Month</code></td><td>int 1–12 (read-only)</td><td>Current in-game month</td></tr>
+        <tr><td><code>Day</code></td><td>int 1–31 (read-only)</td><td>Current in-game day</td></tr>
+        <tr><td><code>Hour</code></td><td>float 0–24 (read-only)</td><td>Current in-game hour (fractional)</td></tr>
+        <tr><td><code>DayOfWeek</code></td><td>System.DayOfWeek (read-only)</td><td>Current day of the week</td></tr>
+        <tr><td><code>JumpToDate(month, day, hour)</code></td><td>method</td><td>Instantly jump to a date. In-game mode only.</td></tr>
+        <tr><td><code>SetCurrentHour(float)</code></td><td>method</td><td>Set time of day without changing the date.</td></tr>
+        <tr><td><code>SetTime(string)</code></td><td>method</td><td>Set time from a <code>"HH:MM"</code> string.</td></tr>
+      </table>
+
+      <pre><code><span class="cm">// Example: jump to July 4th at 9am</span>
+<span class="ty">GameCalendar</span>.Instance.<span class="cy">JumpToDate</span>(<span class="ty">CalendarMonth</span>.July, <span class="nm">4</span>, <span class="nm">9f</span>);
+
+<span class="cm">// Example: set time of day</span>
+<span class="ty">GameCalendar</span>.Instance.<span class="cy">SetTime</span>(<span class="st">"14:30"</span>);
+
+<span class="cm">// Example: read current date</span>
+<span class="kw">int</span> day   = <span class="ty">GameCalendar</span>.Instance.Day;
+<span class="kw">int</span> month = <span class="ty">GameCalendar</span>.Instance.Month;</code></pre>
+    </section>
+
+    <section id="gc-events">
+      <h3>Events</h3>
+      <div class="prop-list">
+        <div class="prop">
+          <div><div class="prop-name">OnDayChanged</div><div class="prop-type">Action</div></div>
+          <div class="prop-desc">Fired once whenever the in-game day rolls over. Subscribe here to drive any system that needs to update daily.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">OnMonthChanged</div><div class="prop-type">Action</div></div>
+          <div class="prop-desc">Fired once whenever the in-game month rolls over.</div>
+        </div>
+      </div>
+      <pre><code><span class="kw">void</span> <span class="cy">Start</span>()
+{
+    <span class="ty">GameCalendar</span>.Instance.OnDayChanged  += <span class="cy">HandleNewDay</span>;
+    <span class="ty">GameCalendar</span>.Instance.OnMonthChanged += <span class="cy">HandleNewMonth</span>;
+}
+
+<span class="kw">void</span> <span class="cy">HandleNewDay</span>()  { <span class="cm">/* spawn daily events, refresh quest states, etc. */</span> }
+<span class="kw">void</span> <span class="cy">HandleNewMonth</span>() { <span class="cm">/* change season, update shop inventory, etc. */</span> }</code></pre>
+    </section>
+  </section>
+
+  <!-- ── WallCalendar ─────────────────────────────────────────────────── -->
+  <section id="wall-calendar">
+    <h2>WallCalendar <span class="badge badge-red">Prop Controller</span></h2>
+    <p>Reads from <code>GameCalendar</code> on the <code>OnDayChanged</code> event and updates all prop visuals: the month illustration texture, month name label, day-of-week column headers, and the 6×5 grid of <code>DayMarker</code> cells.</p>
+
+    <div class="screenshot">
+      <div class="ph-icon">🖥</div>
+      <div class="ph-label">[ SCREENSHOT ]</div>
+      <div class="ph-desc">WallCalendar Inspector — showing all sections: Scene References, Atlas Settings, Marker Colours, and Day Markers array</div>
+    </div>
+
+    <section id="wc-inspector">
+      <h3>Inspector Properties</h3>
+      <div class="prop-list">
+        <div class="prop">
+          <div><div class="prop-name">gameCalendar</div><div class="prop-type">GameCalendar</div></div>
+          <div class="prop-desc">Reference to the scene GameCalendar. Leave null to auto-find via <code>FindFirstObjectByType</code> on Awake.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">topImageRenderer</div><div class="prop-type">Renderer</div></div>
+          <div class="prop-desc">The Renderer whose material UV offset is updated each month to show the correct atlas illustration.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">topImageTexProperty</div><div class="prop-type">string</div></div>
+          <div class="prop-desc">Material texture property name. Use <code>_BaseMap</code> for URP/HDRP or <code>_MainTex</code> for Built-in.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">monthLabelTMP</div><div class="prop-type">TMP_Text</div></div>
+          <div class="prop-desc">TextMeshPro text component that displays the month name (e.g. "August").</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">dayOfWeekLabelPrefab</div><div class="prop-type">GameObject</div></div>
+          <div class="prop-desc">Prefab with a TMP_Text component. Seven copies are instantiated automatically as column headers (M T W T F S S or S M T W T F S).</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">weekStartsOnSunday</div><div class="prop-type">bool</div></div>
+          <div class="prop-desc">When true the grid starts on Sunday. When false (default) the grid starts on Monday.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">dayMarkerPrefab</div><div class="prop-type">DayMarker</div></div>
+          <div class="prop-desc">Prefab for each day cell. Assign the <code>DayMarker.prefab</code> from the Prefabs folder. Cells are auto-instantiated via <em>Populate Grid</em>.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">gridContainer</div><div class="prop-type">Transform</div></div>
+          <div class="prop-desc">Parent transform for the 35 instantiated grid cells. Should be a <code>GridLayoutGroup</code> for automatic cell positioning.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">showDateNumbers</div><div class="prop-type">bool</div></div>
+          <div class="prop-desc">When true each cell's <code>dateLabel</code> TMP_Text shows the day number.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">pastDayColour</div><div class="prop-type">Color</div></div>
+          <div class="prop-desc">Colour applied to the X mark on days that have passed. Default: red.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">todayColour</div><div class="prop-type">Color</div></div>
+          <div class="prop-desc">Background tint applied to the current day's cell. Default: orange.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="wc-setup">
+      <h3>Scene Setup (from scratch)</h3>
+
+      <div class="screenshot">
+        <div class="ph-icon">🗂</div>
+        <div class="ph-label">[ SCREENSHOT ]</div>
+        <div class="ph-desc">Unity Hierarchy panel showing WallCalendar GameObject hierarchy — GridContainer with GridLayoutGroup, DayLabel row, and 35 instantiated Cell GameObjects</div>
+      </div>
+
+      <p>The included prefab is already fully configured. If you need to set up a WallCalendar manually:</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body"><strong>Add the WallCalendar mesh</strong> — Place the <code>WallCalendar.fbx</code> model in your scene and assign materials from the Materials folder.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body"><strong>Add a WallCalendar component</strong> — Assign the <code>topImageRenderer</code> to the top-panel mesh Renderer. Assign a TMP_Text to <code>monthLabelTMP</code>.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body"><strong>Set up the grid container</strong> — Create a child Canvas (World Space), add a Panel with a <code>GridLayoutGroup</code>. Assign this panel as <code>gridContainer</code>.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body"><strong>Assign the DayMarker prefab</strong> — Drag <code>DayMarker.prefab</code> into the <code>dayMarkerPrefab</code> slot. Click <strong>Populate Grid</strong> in the Inspector to instantiate 35 cells.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body"><strong>Assign the DaysOfTheWeek prefab</strong> — Set up a header row above the grid. Assign to <code>dayOfWeekLabelPrefab</code> and click <strong>Populate Day Labels</strong>.</div>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <div class="callout-icon">⚠️</div>
+        <div>The <strong>Populate Grid</strong> button destroys existing cell children before recreating them. If you have customised individual cells, back them up first.</div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ── DayMarker ────────────────────────────────────────────────────── -->
+  <section id="day-marker">
+    <h2>DayMarker <span class="badge badge-gold">Cell Component</span></h2>
+    <p>Placed on the root of each day-cell prefab. Controlled entirely by <code>WallCalendar</code> — you do not need to call any methods on it directly.</p>
+
+    <div class="screenshot">
+      <div class="ph-icon">🖥</div>
+      <div class="ph-label">[ SCREENSHOT ]</div>
+      <div class="ph-desc">DayMarker prefab Inspector — showing xObject, markerImage, and dateLabel slots. Side-by-side: a past day (red X), today (orange), and a future day (empty)</div>
+    </div>
+
+    <h3>Inspector Fields</h3>
+    <div class="prop-list">
+      <div class="prop">
+        <div><div class="prop-name">xObject</div><div class="prop-type">GameObject</div></div>
+        <div class="prop-desc">Child GameObject holding the X graphic (a TMP_Text with an "×" character). Activated for past days only.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">markerRenderer</div><div class="prop-type">Renderer</div></div>
+        <div class="prop-desc">For 3D / world-space setups — tinted via MaterialPropertyBlock. Leave null for pure UI setups.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">markerImage</div><div class="prop-type">UI.Image</div></div>
+        <div class="prop-desc">For canvas / UI setups — Image component tinted for today's highlight. Takes priority over markerRenderer when set.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">dateLabel</div><div class="prop-type">TMP_Text</div></div>
+        <div class="prop-desc">Displays the day number (e.g. "14"). Cleared for spacer cells before and after the active days of the month.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CalendarPageTurn ─────────────────────────────────────────────── -->
+  <section id="page-turn">
+    <h2>CalendarPageTurn <span class="badge badge-red">Animation</span></h2>
+    <p>Listens for <code>WallCalendar.OnBeforeMonthRefresh</code>, snapshots the live RenderTexture, and triggers a skinned mesh page-turn animation.</p>
+
+    <div class="screenshot">
+      <div class="ph-icon">🎞</div>
+      <div class="ph-label">[ SCREENSHOT ]</div>
+      <div class="ph-desc">Page-turn animation mid-flip — the animated page peeling back to reveal the new month's calendar grid underneath</div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-icon">💡</div>
+      <div>The page-turn is entirely optional. The WallCalendar prop works without it — months simply update instantly.</div>
+    </div>
+
+    <h3>Setup</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body"><strong>Add the component</strong> — Add <code>CalendarPageTurn</code> to any GameObject. Assign the <code>WallCalendar</code> reference (auto-found if null).</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body"><strong>Assign the animated page</strong> — Point <code>animatedPageRenderer</code> to the SkinnedMeshRenderer on your page mesh. Set <code>illustrationSlot</code> and <code>gridSlot</code> to the correct material slot indices.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body"><strong>Assign the RenderTexture</strong> — Set <code>liveCalendarRT</code> to the included <code>WallCalendarMondayStartRT</code> or <code>WallCalendarSundayStartRT</code> asset.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body"><strong>Add Animation Event</strong> — At the end of the <code>PageTurn</code> clip, add an Animation Event calling <code>OnPageTurnComplete()</code>. This hides the page and restores the live RT.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body"><strong>(Optional) Sound</strong> — Assign an AudioSource and the included <code>WallCalendarPageTurn.wav</code> clip. Plays automatically when the page turn triggers.</div>
+      </div>
+    </div>
+
+    <h3>Inspector Properties</h3>
+    <div class="prop-list">
+      <div class="prop">
+        <div><div class="prop-name">animatedPageRenderer</div><div class="prop-type">Renderer</div></div>
+        <div class="prop-desc">The SkinnedMeshRenderer on the animated page object.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">illustrationSlot</div><div class="prop-type">int</div></div>
+        <div class="prop-desc">Material slot index for the month illustration texture. The previous month's atlas UV is set here before the animation plays.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">gridSlot</div><div class="prop-type">int</div></div>
+        <div class="prop-desc">Material slot for the days-grid render texture. Shows the live calendar grid on the back of the page mid-turn.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">liveCalendarRT</div><div class="prop-type">RenderTexture</div></div>
+        <div class="prop-desc">The live RenderTexture the calendar camera renders to.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">lowerPanelRenderer</div><div class="prop-type">Renderer</div></div>
+        <div class="prop-desc">The main lower panel on the calendar mesh. Frozen on a snapshot during the animation; restored to the live RT when complete.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SunController ────────────────────────────────────────────────── -->
+  <section id="sun-controller">
+    <h2>SunController <span class="badge badge-green">Demo</span></h2>
+    <p>Drives a scene Directional Light as a sun, reading <code>GameCalendar.Hour</code> and <code>Month</code> every Update. Requires a <code>Light</code> component on the same GameObject.</p>
+
+    <div class="prop-list">
+      <div class="prop">
+        <div><div class="prop-name">northernHemisphere</div><div class="prop-type">bool</div></div>
+        <div class="prop-desc">True = sun arcs through the south at noon. False (default) = arcs through the north. Set to false for Australian settings.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">summerPeakMonth</div><div class="prop-type">int 1–12</div></div>
+        <div class="prop-desc">Month with the highest noon sun elevation. Default 1 (January) for southern hemisphere summer.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">summerNoonElevation</div><div class="prop-type">float (degrees)</div></div>
+        <div class="prop-desc">Maximum sun elevation at noon. Default 72°.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">winterNoonElevation</div><div class="prop-type">float (degrees)</div></div>
+        <div class="prop-desc">Minimum sun elevation at noon, six months after summerPeakMonth. Default 28°.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">sunColour</div><div class="prop-type">Gradient</div></div>
+        <div class="prop-desc">Light colour evaluated by normalised elevation. Time 0 = horizon (warm amber). Time 1 = noon (neutral white).</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Texture Atlas ────────────────────────────────────────────────── -->
+  <section id="texture-atlas">
+    <h2>Texture Atlas</h2>
+    <p>The top illustration panel uses a <strong>4×4 UV-sliced texture atlas</strong> (16 cells total). Months map to cells 0–11; cells 12–15 are available for cover, back, and spare pages.</p>
+
+    <div class="screenshot">
+      <div class="ph-icon">🖼</div>
+      <div class="ph-label">[ SCREENSHOT ]</div>
+      <div class="ph-desc">CalendarImages.png atlas open in the Unity texture inspector — 4×4 grid clearly showing all 12 month illustrations plus spare cells</div>
+    </div>
+
+    <table>
+      <tr><th>Row</th><th>Col 0</th><th>Col 1</th><th>Col 2</th><th>Col 3</th></tr>
+      <tr><td><strong>0 (top)</strong></td><td>January</td><td>February</td><td>March</td><td>April</td></tr>
+      <tr><td><strong>1</strong></td><td>May</td><td>June</td><td>July</td><td>August</td></tr>
+      <tr><td><strong>2</strong></td><td>September</td><td>October</td><td>November</td><td>December</td></tr>
+      <tr><td><strong>3</strong></td><td>Cover (cell 12)</td><td>Back (cell 13)</td><td>Blank (cell 14)</td><td>Spare (cell 15)</td></tr>
+    </table>
+
+    <div class="callout note">
+      <div class="callout-icon">📐</div>
+      <div>Three atlas variants are included: <code>CalendarImages</code> (default), <code>InGameCalendar-Cars</code>, and <code>InGameCalendar-Landscapes</code>. Swap by changing the texture on the <code>Calendar.mat</code> material.</div>
+    </div>
+  </section>
+
+  <!-- ── Custom Art ────────────────────────────────────────────────────── -->
+  <section id="custom-art">
+    <h2>Custom Art</h2>
+    <p>To replace the month illustrations with your own artwork:</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body"><strong>Create your atlas</strong> — Make a square image (e.g. 2048×2048) divided into a 4×4 grid. Place your 12 month images in cells 0–11, left-to-right top-to-bottom.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body"><strong>Import to Unity</strong> — Import as a standard 2D Texture. Set <em>Wrap Mode</em> to <strong>Clamp</strong>. No sprite sheet slicing needed.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body"><strong>Assign to the material</strong> — Drag your texture onto <code>Calendar.mat</code>'s <em>Base Map</em> slot.</div>
+      </div>
+    </div>
+    <div class="callout warn">
+      <div class="callout-icon">⚠️</div>
+      <div>If your atlas has a different number of rows or columns, update <strong>Atlas Columns</strong> and <strong>Atlas Rows</strong> on the <code>WallCalendar</code> component to match.</div>
+    </div>
+  </section>
+
+  <!-- ── Week Start Day ────────────────────────────────────────────────── -->
+  <section id="week-start">
+    <h2>Week Start Day</h2>
+    <p>Toggle the <strong>Week Starts On Sunday</strong> checkbox on the <code>WallCalendar</code> component. The grid columns and day-of-week headers update automatically — no scene rebuild needed.</p>
+    <p>Two RenderTexture + Material pairs are included: <code>WallCalendarMondayStartRT</code> and <code>WallCalendarSundayStartRT</code>. Use whichever matches your setting.</p>
+  </section>
+
+  <!-- ── Time Scale ────────────────────────────────────────────────────── -->
+  <section id="time-scale">
+    <h2>Configuring Time Speed</h2>
+    <p>The <code>gameMinutesPerRealSecond</code> field on <code>GameCalendar</code> controls how fast in-game time passes.</p>
+    <table>
+      <tr><th>Value</th><th>Effect</th></tr>
+      <tr><td><code>1</code></td><td>Real time — 1 game day = 24 real hours</td></tr>
+      <tr><td><code>60</code></td><td>1 game hour per real second — 1 day ≈ 24 seconds</td></tr>
+      <tr><td><code>720</code></td><td>1 game day every ~2 real minutes</td></tr>
+      <tr><td><code>1440</code></td><td>1 full game day per real second</td></tr>
+    </table>
+    <pre><code><span class="ty">GameCalendar</span>.Instance.gameMinutesPerRealSecond = <span class="nm">120f</span>; <span class="cm">// 2x speed</span></code></pre>
+  </section>
+
+  <!-- ── Scripting Integration ─────────────────────────────────────────── -->
+  <section id="scripting">
+    <h2>Scripting Integration</h2>
+
+    <h3>Subscribing to day and month changes</h3>
+    <pre><code><span class="kw">using</span> ChrisBurns.InGameCalendar;
+
+<span class="kw">public class</span> <span class="ty">QuestSystem</span> : <span class="ty">MonoBehaviour</span>
+{
+    <span class="kw">void</span> <span class="cy">Start</span>()
+    {
+        <span class="ty">GameCalendar</span>.Instance.OnDayChanged   += <span class="cy">OnNewDay</span>;
+        <span class="ty">GameCalendar</span>.Instance.OnMonthChanged += <span class="cy">OnNewMonth</span>;
+    }
+
+    <span class="kw">void</span> <span class="cy">OnDestroy</span>()
+    {
+        <span class="cm">// Always unsubscribe to prevent memory leaks</span>
+        <span class="kw">if</span> (<span class="ty">GameCalendar</span>.Instance != <span class="kw">null</span>)
+        {
+            <span class="ty">GameCalendar</span>.Instance.OnDayChanged   -= <span class="cy">OnNewDay</span>;
+            <span class="ty">GameCalendar</span>.Instance.OnMonthChanged -= <span class="cy">OnNewMonth</span>;
+        }
+    }
+
+    <span class="kw">void</span> <span class="cy">OnNewDay</span>()
+    {
+        <span class="kw">int</span> day   = <span class="ty">GameCalendar</span>.Instance.Day;
+        <span class="kw">int</span> month = <span class="ty">GameCalendar</span>.Instance.Month;
+        <span class="ty">Debug</span>.<span class="cy">Log</span>(<span class="st">$"New day: {day}/{month}"</span>);
+    }
+
+    <span class="kw">void</span> <span class="cy">OnNewMonth</span>()
+    {
+        <span class="cm">// Rotate stock, change season, etc.</span>
+    }
+}</code></pre>
+
+    <h3>Forcing a calendar refresh from code</h3>
+    <pre><code><span class="cm">// After changing the date manually, force the wall calendar to refresh visuals</span>
+<span class="ty">FindFirstObjectByType</span>&lt;<span class="ty">WallCalendar</span>&gt;().<span class="cy">Refresh</span>();</code></pre>
+  </section>
+
+  <!-- ── FAQ ─────────────────────────────────────────────────────────── -->
+  <section id="faq">
+    <h2>FAQ</h2>
+
+    <h3>The calendar shows the wrong month illustration</h3>
+    <p>Check that <strong>Texture Property Name</strong> on WallCalendar matches your pipeline — <code>_BaseMap</code> for URP/HDRP, <code>_MainTex</code> for Built-in. Also verify Atlas Columns/Rows match your texture.</p>
+
+    <h3>The day grid isn't positioned correctly</h3>
+    <p>The grid container needs a <strong>GridLayoutGroup</strong> with a cell size and spacing that fits your mesh. Check the prefab's Grid Canvas settings for reference values.</p>
+
+    <h3>The page-turn animation doesn't play</h3>
+    <p>Ensure the Animator has a Trigger parameter named exactly <code>PageTurn</code>. Confirm the Animation Event at the end of the clip calls <code>OnPageTurnComplete</code> on the <code>CalendarPageTurn</code> component, not WallCalendar.</p>
+
+    <h3>Can I use this without the wall calendar mesh?</h3>
+    <p>Yes — <code>GameCalendar</code> is completely decoupled. Use it as a standalone game clock and subscribe to its events to drive any other system.</p>
+
+    <h3>Does this work with a custom time system?</h3>
+    <p><code>GameCalendar</code> implements <code>IGameClock</code> and <code>IScalableClock</code> interfaces. Implement these on your own clock and WallCalendar will work with it.</p>
+
+    <h3>Can I have multiple wall calendars in one scene?</h3>
+    <p>Yes. Each WallCalendar subscribes to the same GameCalendar singleton independently. All instances update in sync.</p>
+  </section>
+
+  <!-- ── Changelog ────────────────────────────────────────────────────── -->
+  <section id="changelog">
+    <h2>Changelog</h2>
+    <h3>v1.0.0 — Initial Release</h3>
+    <ul style="margin-top:8px; line-height:2.2;">
+      <li>GameCalendar singleton with real-world and in-game clock modes</li>
+      <li>WallCalendar prop with 6×5 day grid, X marks, month illustration atlas</li>
+      <li>CalendarPageTurn with RenderTexture snapshot and skinned mesh animation</li>
+      <li>SunController demo component with seasonal arc</li>
+      <li>Monday-start and Sunday-start variants</li>
+      <li>Three texture atlas themes: Default, Cars, Landscapes</li>
+      <li>Demo scene included</li>
+    </ul>
+  </section>
+
+  <div style="margin-top:64px; padding-top:24px; border-top:1px solid var(--border); font-size:12px; color:var(--text-dim);">
+    In-Game Calendar — © Cerberus Bytes &nbsp;|&nbsp;
+    <a href="https://assetstore.unity.com/packages/slug/384708">Asset Store</a> &nbsp;|&nbsp;
+    <a href="https://discord.gg/DSUd2QcyHZ">Discord</a> &nbsp;|&nbsp;
+    <a href="https://chrisburns.com.au">chrisburns.com.au</a>
+  </div>
+
+</main>
+
+<script>
+  const links = document.querySelectorAll('.sidebar a[href^="#"]');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.sidebar a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0% -75% 0%' });
+  document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
