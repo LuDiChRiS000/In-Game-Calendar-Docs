@@ -504,8 +504,8 @@
     /* ── Folder tree ─────────────────────────────────────────────────── */
     .tree {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 12.5px;
-      line-height: 1.85;
+      font-size: 12px;
+      line-height: 1.9;
       background: var(--bg-code);
       border: 1px solid var(--border);
       border-left: 3px solid var(--gold);
@@ -513,8 +513,12 @@
       padding: 16px 20px;
       margin: 12px 0 18px;
       color: var(--text);
+      white-space: pre;
+      overflow-x: auto;
+      display: block;
+      tab-size: 4;
     }
-    .tree .dir  { color: var(--gold); }
+    .tree .dir  { color: var(--gold); font-weight: 600; }
     .tree .file { color: var(--text); }
     .tree .note { color: var(--text-dim); }
 
@@ -629,32 +633,31 @@
   <!-- ── Package Contents ─────────────────────────────────────────────── -->
   <section id="package-contents">
     <h2>Package Contents</h2>
-    <div class="tree">
-<span class="dir">InGameCalendar/</span>
+    <div class="tree"><span class="dir">InGameCalendar/</span>
 ├── <span class="dir">Animation/</span>
-│   ├── <span class="file">PageTurn.anim</span>             <span class="note">— skinned mesh page-turn animation clip</span>
-│   └── <span class="file">WallCalendar.controller</span>   <span class="note">— animator controller with PageTurn trigger</span>
+│   ├── <span class="file">PageTurn.anim</span>                          <span class="note">— skinned mesh page-turn animation clip</span>
+│   └── <span class="file">WallCalendar.controller</span>                <span class="note">— animator controller with PageTurn trigger</span>
 ├── <span class="dir">Audio/</span>
-│   └── <span class="file">WallCalendarPageTurn.wav</span>  <span class="note">— paper page-turn sound effect</span>
+│   └── <span class="file">WallCalendarPageTurn.wav</span>               <span class="note">— paper page-turn sound effect</span>
 ├── <span class="dir">Demo/</span>
-│   ├── <span class="file">DemoScene.unity</span>           <span class="note">— fully configured demo scene</span>
+│   ├── <span class="file">DemoScene.unity</span>                        <span class="note">— fully configured demo scene</span>
 │   └── <span class="dir">Scripts/</span>
-│       └── <span class="file">SunController.cs</span>      <span class="note">— directional light sun driver</span>
+│       └── <span class="file">SunController.cs</span>                   <span class="note">— directional light sun driver</span>
 ├── <span class="dir">Fonts/</span>
-│   ├── <span class="file">GochiHand-Regular SDF.asset</span>   <span class="note">— handwritten font for X marks</span>
-│   └── <span class="file">Roboto-VariableFont SDF.asset</span> <span class="note">— day number labels</span>
+│   ├── <span class="file">GochiHand-Regular SDF.asset</span>            <span class="note">— handwritten font for X marks</span>
+│   └── <span class="file">Roboto-VariableFont SDF.asset</span>          <span class="note">— day number labels</span>
 ├── <span class="dir">Materials/</span>
 │   ├── <span class="file">Calendar.mat</span>
 │   ├── <span class="file">Calendar-Landscapes.mat</span>
 │   ├── <span class="file">CalendarDaysMondayStart.mat</span>
 │   └── <span class="file">CalendarDaysSundayStart.mat</span>
 ├── <span class="dir">Models/</span>
-│   └── <span class="file">WallCalendar.fbx</span>          <span class="note">— optimised wall calendar mesh</span>
+│   └── <span class="file">WallCalendar.fbx</span>                       <span class="note">— optimised wall calendar mesh</span>
 ├── <span class="dir">Prefabs/</span>
-│   ├── <span class="file">WallCalendar.prefab</span>        <span class="note">— ready-to-use calendar (default art)</span>
+│   ├── <span class="file">WallCalendar.prefab</span>                    <span class="note">— ready-to-use calendar (default art)</span>
 │   ├── <span class="file">WallCalendar-Landscapes.prefab</span>
-│   ├── <span class="file">DayMarker.prefab</span>           <span class="note">— single day cell prefab</span>
-│   └── <span class="file">DaysOfTheWeek.prefab</span>       <span class="note">— day-of-week column headers</span>
+│   ├── <span class="file">DayMarker.prefab</span>                       <span class="note">— single day cell prefab</span>
+│   └── <span class="file">DaysOfTheWeek.prefab</span>                   <span class="note">— day-of-week column headers</span>
 ├── <span class="dir">Scripts/</span>
 │   ├── <span class="file">GameCalendar.cs</span>
 │   ├── <span class="file">WallCalendar.cs</span>
@@ -663,12 +666,11 @@
 │   └── <span class="dir">Editor/</span>
 │       └── <span class="file">WallCalendarEditor.cs</span>
 └── <span class="dir">Textures/</span>
-    ├── <span class="file">CalendarImages.png</span>              <span class="note">— default 4×4 atlas</span>
-    ├── <span class="file">InGameCalendar-Cars.png</span>         <span class="note">— cars theme atlas</span>
-    ├── <span class="file">InGameCalendar-Landscapes.png</span>   <span class="note">— landscapes theme atlas</span>
+    ├── <span class="file">CalendarImages.png</span>                     <span class="note">— default 4×4 atlas</span>
+    ├── <span class="file">InGameCalendar-Cars.png</span>                <span class="note">— cars theme atlas</span>
+    ├── <span class="file">InGameCalendar-Landscapes.png</span>          <span class="note">— landscapes theme atlas</span>
     ├── <span class="file">WallCalendarMondayStartRT.renderTexture</span>
-    └── <span class="file">WallCalendarSundayStartRT.renderTexture</span>
-    </div>
+    └── <span class="file">WallCalendarSundayStartRT.renderTexture</span></div>
   </section>
 
   <!-- ── Quick Start ──────────────────────────────────────────────────── -->
