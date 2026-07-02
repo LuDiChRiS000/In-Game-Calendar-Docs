@@ -557,6 +557,7 @@
     <a class="sub" href="#gc-events">Events</a>
     <a href="#wall-calendar">WallCalendar</a>
     <a class="sub" href="#wc-inspector">Inspector Properties</a>
+    <a class="sub" href="#wc-events">Events</a>
     <a class="sub" href="#wc-setup">Scene Setup</a>
     <a href="#day-marker">DayMarker</a>
     <a href="#page-turn">CalendarPageTurn</a>
@@ -566,6 +567,7 @@
     <a href="#texture-atlas">Texture Atlas</a>
     <a href="#custom-art">Custom Art</a>
     <a href="#week-start">Week Start Day</a>
+    <a href="#cozy-weather">Cozy Weather Integration</a>
     <a href="#time-scale">Time Speed</a>
     <a href="#scripting">Scripting Integration</a>
 
@@ -763,7 +765,8 @@
             How many in-game minutes pass per real-world second.<br/>
             <code>1</code> = real time (1 day = 24 real hours)<br/>
             <code>60</code> = 1 game hour per real second (~24s per day)<br/>
-            <code>1440</code> = 1 full game day per real second
+            <code>1440</code> = 1 full game day per real second<br/>
+            Default: <code>60</code>
           </div>
         </div>
       </div>
@@ -779,9 +782,11 @@
         <tr><td><code>Day</code></td><td>int 1–31 (read-only)</td><td>Current in-game day</td></tr>
         <tr><td><code>Hour</code></td><td>float 0–24 (read-only)</td><td>Current in-game hour (fractional)</td></tr>
         <tr><td><code>DayOfWeek</code></td><td>System.DayOfWeek (read-only)</td><td>Current day of the week</td></tr>
-        <tr><td><code>JumpToDate(month, day, hour)</code></td><td>method</td><td>Instantly jump to a date. In-game mode only.</td></tr>
-        <tr><td><code>SetCurrentHour(float)</code></td><td>method</td><td>Set time of day without changing the date.</td></tr>
-        <tr><td><code>SetTime(string)</code></td><td>method</td><td>Set time from a <code>"HH:MM"</code> string.</td></tr>
+        <tr><td><code>GameMinutesPerRealSecond</code></td><td>float (read-only)</td><td>Current time-scale setting</td></tr>
+        <tr><td><code>ClockInterface</code></td><td>IGameClock (read-only)</td><td>Interface view of this clock (implements <code>IScalableClock</code> and <code>IMonthChangedNotifier</code>) for systems that shouldn't depend on GameCalendar directly</td></tr>
+        <tr><td><code>JumpToDate(month, day = 1, hour = 8f)</code></td><td>method</td><td>Instantly jump to a date. In-game mode only.</td></tr>
+        <tr><td><code>SetCurrentHour(float)</code></td><td>method</td><td>Set time of day without changing the date. In-game mode only.</td></tr>
+        <tr><td><code>SetTime(string)</code></td><td>method</td><td>Set time from a <code>"H:MM"</code> or <code>"HH:MM"</code> string.</td></tr>
       </table>
 
       <pre><code><span class="cm">// Example: jump to July 4th at 9am</span>
@@ -821,7 +826,8 @@
   <!-- ── WallCalendar ─────────────────────────────────────────────────── -->
   <section id="wall-calendar">
     <h2>WallCalendar <span class="badge badge-red">Prop Controller</span></h2>
-    <p>Reads from <code>GameCalendar</code> on the <code>OnDayChanged</code> event and updates all prop visuals: the month illustration texture, month name label, day-of-week column headers, and the 6×5 grid of <code>DayMarker</code> cells.</p>
+    <p>Reads from <code>GameCalendar</code> on the <code>OnDayChanged</code> event and updates all prop visuals: the month illustration texture, month name label, day-of-week column headers, and the 35-cell (5 rows × 7 columns) grid of <code>DayMarker</code> cells. Can alternatively sync to the Cozy: Stylized Weather time system — see <a href="#cozy-weather">Cozy Weather Integration</a>.</p>
+    <p><strong>Namespace:</strong> <code>ChrisBurns</code></p>
 
     <div class="img-block">
       <a href="images/wall-calendar-inspector.png" class="img-link" onclick="openLightbox(this);return false;"><span class="img-frame"><img src="images/wall-calendar-inspector.png" alt="WallCalendar component Inspector" /></span></a>
@@ -861,7 +867,7 @@
         </div>
         <div class="prop">
           <div><div class="prop-name">gridContainer</div><div class="prop-type">Transform</div></div>
-          <div class="prop-desc">Parent transform for the 35 instantiated grid cells. Should be a <code>GridLayoutGroup</code> for automatic cell positioning.</div>
+          <div class="prop-desc">Parent transform for the 35 instantiated grid cells. Should have a <code>GridLayoutGroup</code> for automatic cell positioning. Defaults to this transform if left null.</div>
         </div>
         <div class="prop">
           <div><div class="prop-name">showDateNumbers</div><div class="prop-type">bool</div></div>
@@ -874,6 +880,41 @@
         <div class="prop">
           <div><div class="prop-name">todayColour</div><div class="prop-type">Color</div></div>
           <div class="prop-desc">Background tint applied to the current day's cell. Default: orange.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">futureDayColour</div><div class="prop-type">Color</div></div>
+          <div class="prop-desc">Tint applied to future-day and spacer cell backgrounds. Past-day cell backgrounds also use this colour — only the X mark itself gets <code>pastDayColour</code>. Default: transparent.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">dayOfWeekContainer</div><div class="prop-type">Transform</div></div>
+          <div class="prop-desc">Parent transform for the 7 instantiated day-of-week header labels. Defaults to this transform if left null.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">atlasColumns / atlasRows</div><div class="prop-type">int</div></div>
+          <div class="prop-desc">Layout of the month illustration texture atlas. Default: 4 × 4.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">coverCellIndex</div><div class="prop-type">int</div></div>
+          <div class="prop-desc">Atlas cell index used for the calendar cover page (shown before any month). Default: 12.</div>
+        </div>
+        <div class="prop">
+          <div><div class="prop-name">useCozyWeather</div><div class="prop-type">bool</div></div>
+          <div class="prop-desc">When enabled the calendar reads date and time from the Cozy Weather Sphere instead of GameCalendar. Requires the Cozy Weather package and the <code>COZY_WEATHER</code> scripting define — see <a href="#cozy-weather">Cozy Weather Integration</a>. Default: false.</div>
+        </div>
+      </div>
+
+      <div class="callout note">
+        <div class="callout-icon">📝</div>
+        <div>Months that would need a sixth row (e.g. a 31-day month starting in the last column) wrap their final days into the unused leading cells of the first row, so the grid never exceeds 35 cells.</div>
+      </div>
+    </section>
+
+    <section id="wc-events">
+      <h3>Events</h3>
+      <div class="prop-list">
+        <div class="prop">
+          <div><div class="prop-name">OnBeforeMonthRefresh</div><div class="prop-type">Action&lt;int&gt;</div></div>
+          <div class="prop-desc">Fired when the month changes, just before visuals update. Receives the old month number (1–12). <code>CalendarPageTurn</code> subscribes here to snapshot the live RenderTexture while it still shows the completed month.</div>
         </div>
       </div>
     </section>
@@ -921,6 +962,7 @@
   <section id="day-marker">
     <h2>DayMarker <span class="badge badge-gold">Cell Component</span></h2>
     <p>Placed on the root of each day-cell prefab. Controlled entirely by <code>WallCalendar</code> — you do not need to call any methods on it directly.</p>
+    <p><strong>Namespace:</strong> <code>ChrisBurns</code></p>
 
     <div class="img-block">
       <a href="images/day-marker.png" class="img-link" onclick="openLightbox(this);return false;"><span class="img-frame"><img src="images/day-marker.png" alt="DayMarker prefab and cell states" /></span></a>
@@ -952,6 +994,7 @@
   <section id="page-turn">
     <h2>CalendarPageTurn <span class="badge badge-red">Animation</span></h2>
     <p>Listens for <code>WallCalendar.OnBeforeMonthRefresh</code>, snapshots the live RenderTexture, and triggers a skinned mesh page-turn animation.</p>
+    <p><strong>Namespace:</strong> <code>ChrisBurns</code></p>
 
     <div class="img-block">
       <a href="images/page-turn-animation.png" class="img-link" onclick="openLightbox(this);return false;"><span class="img-frame"><img src="images/page-turn-animation.png" alt="Page-turn animation mid-flip" /></span></a>
@@ -967,11 +1010,11 @@
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
-        <div class="step-body"><strong>Add the component</strong> — Add <code>CalendarPageTurn</code> to any GameObject. Assign the <code>WallCalendar</code> reference (auto-found if null).</div>
+        <div class="step-body"><strong>Add the component</strong> — Add <code>CalendarPageTurn</code> to any GameObject. Assign the <code>WallCalendar</code> reference — if left null it is auto-found by searching this GameObject, then its parents, its children, and finally the whole scene.</div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
-        <div class="step-body"><strong>Assign the animated page</strong> — Point <code>animatedPageRenderer</code> to the SkinnedMeshRenderer on your page mesh. Set <code>illustrationSlot</code> and <code>gridSlot</code> to the correct material slot indices.</div>
+        <div class="step-body"><strong>Assign the animated page</strong> — Assign the page GameObject to <code>animatedPage</code> and its Animator to <code>pageAnimator</code>. Point <code>animatedPageRenderer</code> to the SkinnedMeshRenderer on the page mesh, and set <code>illustrationSlot</code> and <code>gridSlot</code> to the correct material slot indices.</div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
@@ -983,23 +1026,48 @@
       </div>
       <div class="step">
         <div class="step-num">5</div>
-        <div class="step-body"><strong>(Optional) Sound</strong> — Assign an AudioSource and the included <code>WallCalendarPageTurn.wav</code> clip. Plays automatically when the page turn triggers.</div>
+        <div class="step-body"><strong>(Optional) Sound</strong> — Assign an AudioSource and the included <code>WallCalendarPageTurn.wav</code> clip. Plays automatically when the page turn triggers, or call <code>PlayPageTurnSound()</code> from an Animation Event for precise timing.</div>
       </div>
+    </div>
+
+    <div class="callout note">
+      <div class="callout-icon">📝</div>
+      <div>By default <strong>Suppress On Start</strong> skips the animation and sound on the first month change after the game starts, so the calendar jumps straight to the correct date (e.g. when loading a save). Disable it to animate every month change.</div>
     </div>
 
     <h3>Inspector Properties</h3>
     <div class="prop-list">
+      <div class="prop">
+        <div><div class="prop-name">wallCalendar</div><div class="prop-type">WallCalendar</div></div>
+        <div class="prop-desc">The WallCalendar to listen to. Auto-found if left null (this GameObject → parents → children → scene-wide).</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">pageAnimator</div><div class="prop-type">Animator</div></div>
+        <div class="prop-desc">Animator on the animated page. Must have a Trigger parameter named <code>PageTurn</code>.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">animatedPage</div><div class="prop-type">GameObject</div></div>
+        <div class="prop-desc">The animated page object. Hidden on Awake; shown while the page-turn plays, then hidden again by <code>OnPageTurnComplete()</code>.</div>
+      </div>
       <div class="prop">
         <div><div class="prop-name">animatedPageRenderer</div><div class="prop-type">Renderer</div></div>
         <div class="prop-desc">The SkinnedMeshRenderer on the animated page object.</div>
       </div>
       <div class="prop">
         <div><div class="prop-name">illustrationSlot</div><div class="prop-type">int</div></div>
-        <div class="prop-desc">Material slot index for the month illustration texture. The previous month's atlas UV is set here before the animation plays.</div>
+        <div class="prop-desc">Material slot index for the month illustration texture. The previous month's atlas UV is set here before the animation plays. Default: 0.</div>
       </div>
       <div class="prop">
         <div><div class="prop-name">gridSlot</div><div class="prop-type">int</div></div>
-        <div class="prop-desc">Material slot for the days-grid render texture. Shows the live calendar grid on the back of the page mid-turn.</div>
+        <div class="prop-desc">Material slot for the days-grid render texture. Shows the live calendar grid on the back of the page mid-turn. Default: 1.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">illustrationTexProperty / gridTexProperty / lowerPanelTexProperty</div><div class="prop-type">string</div></div>
+        <div class="prop-desc">Material texture property names. Default <code>_BaseMap</code> (URP/HDRP) — use <code>_MainTex</code> for Built-in.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">atlasColumns / atlasRows</div><div class="prop-type">int</div></div>
+        <div class="prop-desc">Must match the atlas settings on WallCalendar. Default: 4 × 4.</div>
       </div>
       <div class="prop">
         <div><div class="prop-name">liveCalendarRT</div><div class="prop-type">RenderTexture</div></div>
@@ -1009,6 +1077,14 @@
         <div><div class="prop-name">lowerPanelRenderer</div><div class="prop-type">Renderer</div></div>
         <div class="prop-desc">The main lower panel on the calendar mesh. Frozen on a snapshot during the animation; restored to the live RT when complete.</div>
       </div>
+      <div class="prop">
+        <div><div class="prop-name">audioSource / pageTurnSound</div><div class="prop-type">AudioSource / AudioClip</div></div>
+        <div class="prop-desc">Optional. When both are assigned the page-turn sound plays via <code>PlayOneShot</code>.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">suppressOnStart</div><div class="prop-type">bool</div></div>
+        <div class="prop-desc">Skips the animation and sound on the first month change after the game starts, so the calendar jumps straight to the correct date. Default: true.</div>
+      </div>
     </div>
   </section>
 
@@ -1016,6 +1092,7 @@
   <section id="sun-controller">
     <h2>SunController <span class="badge badge-green">Demo</span></h2>
     <p>Drives a scene Directional Light as a sun, reading <code>GameCalendar.Hour</code> and <code>Month</code> every Update. Requires a <code>Light</code> component on the same GameObject.</p>
+    <p><strong>Namespace:</strong> <code>ChrisBurns.InGameCalendar.Demo</code></p>
 
     <div class="prop-list">
       <div class="prop">
@@ -1035,8 +1112,16 @@
         <div class="prop-desc">Minimum sun elevation at noon, six months after summerPeakMonth. Default 28°.</div>
       </div>
       <div class="prop">
+        <div><div class="prop-name">dayIntensity</div><div class="prop-type">float</div></div>
+        <div class="prop-desc">Intensity of the directional light at full noon. Default 1.2.</div>
+      </div>
+      <div class="prop">
+        <div><div class="prop-name">duskFadeAngle</div><div class="prop-type">float (degrees)</div></div>
+        <div class="prop-desc">Degrees either side of the horizon over which light intensity fades. Higher = softer dusk and dawn. Default 8°.</div>
+      </div>
+      <div class="prop">
         <div><div class="prop-name">sunColour</div><div class="prop-type">Gradient</div></div>
-        <div class="prop-desc">Light colour evaluated by normalised elevation. Time 0 = horizon (warm amber). Time 1 = noon (neutral white).</div>
+        <div class="prop-desc">Light colour evaluated by normalised elevation. Time 0 = horizon (warm amber). Time 1 = noon (neutral white). Leave empty to keep the light's existing colour.</div>
       </div>
     </div>
   </section>
@@ -1085,7 +1170,7 @@
     </div>
     <div class="callout warn">
       <div class="callout-icon">⚠️</div>
-      <div>If your atlas has a different number of rows or columns, update <strong>Atlas Columns</strong> and <strong>Atlas Rows</strong> on the <code>WallCalendar</code> component to match.</div>
+      <div>If your atlas has a different number of rows or columns, update <strong>Atlas Columns</strong> and <strong>Atlas Rows</strong> on the <code>WallCalendar</code> component to match (and on <code>CalendarPageTurn</code> if you use the page-turn animation).</div>
     </div>
   </section>
 
@@ -1096,6 +1181,39 @@
     <p>Two RenderTexture + Material pairs are included: <code>WallCalendarMondayStartRT</code> and <code>WallCalendarSundayStartRT</code>. Use whichever matches your setting.</p>
   </section>
 
+  <!-- ── Cozy Weather Integration ──────────────────────────────────────── -->
+  <section id="cozy-weather">
+    <h2>Cozy Weather Integration</h2>
+    <p>WallCalendar can drive its date directly from <strong>Cozy: Stylized Weather</strong> (DistantLands) instead of GameCalendar — useful if Cozy is already your project's source of truth for time of day and seasons.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body"><strong>Install Cozy</strong> — Import the Cozy: Stylized Weather asset and add a Cozy Weather Sphere to your scene as usual.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body"><strong>Add the scripting define</strong> — Go to <strong>Edit → Project Settings → Player → Other Settings → Scripting Define Symbols</strong> and add <code>COZY_WEATHER</code>. This compiles in the integration code.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body"><strong>Enable it on the calendar</strong> — Tick <strong>Use Cozy Weather</strong> on the <code>WallCalendar</code> component. A <code>GameCalendar</code> is no longer required in the scene for the wall calendar itself.</div>
+      </div>
+    </div>
+
+    <h3>How it works</h3>
+    <p>In Cozy mode the calendar subscribes to Cozy's <code>onNewDay</code> event and reads the month, day, and year from the Cozy time module each refresh. The month is resolved from Cozy's own month name (so custom month-profile lengths are respected); if the name doesn't match a standard English month name, it falls back to the year-percentage. <code>OnBeforeMonthRefresh</code> still fires on month rollover, so the <a href="#page-turn">CalendarPageTurn</a> animation works unchanged.</p>
+
+    <div class="callout warn">
+      <div class="callout-icon">⚠️</div>
+      <div>Without the <code>COZY_WEATHER</code> define, the <strong>Use Cozy Weather</strong> checkbox has no effect — the integration code is compiled out and the calendar falls back to GameCalendar.</div>
+    </div>
+    <div class="callout note">
+      <div class="callout-icon">📝</div>
+      <div>Cozy mode only affects the wall calendar. Components that read from <code>GameCalendar</code> directly (e.g. the <a href="#sun-controller">SunController</a> demo) still need a GameCalendar in the scene — or simply use Cozy's own sun instead. The edit-mode <em>Force Refresh (Editor)</em> preview also requires a GameCalendar; in a Cozy-only scene, preview via Play Mode.</div>
+    </div>
+  </section>
+
   <!-- ── Time Scale ────────────────────────────────────────────────────── -->
   <section id="time-scale">
     <h2>Configuring Time Speed</h2>
@@ -1103,7 +1221,7 @@
     <table>
       <tr><th>Value</th><th>Effect</th></tr>
       <tr><td><code>1</code></td><td>Real time — 1 game day = 24 real hours</td></tr>
-      <tr><td><code>60</code></td><td>1 game hour per real second — 1 day ≈ 24 seconds</td></tr>
+      <tr><td><code>60</code></td><td>1 game hour per real second — 1 day ≈ 24 seconds (default)</td></tr>
       <tr><td><code>720</code></td><td>1 game day every ~2 real minutes</td></tr>
       <tr><td><code>1440</code></td><td>1 full game day per real second</td></tr>
     </table>
@@ -1149,7 +1267,8 @@
 }</code></pre>
 
     <h3>Forcing a calendar refresh from code</h3>
-    <pre><code><span class="cm">// After changing the date manually, force the wall calendar to refresh visuals</span>
+    <pre><code><span class="cm">// After changing the date manually, force the wall calendar to refresh visuals.</span>
+<span class="cm">// Note: WallCalendar lives in the ChrisBurns namespace (add: using ChrisBurns;)</span>
 <span class="ty">FindFirstObjectByType</span>&lt;<span class="ty">WallCalendar</span>&gt;().<span class="cy">Refresh</span>();</code></pre>
   </section>
 
@@ -1164,13 +1283,13 @@
     <p>The grid container needs a <strong>GridLayoutGroup</strong> with a cell size and spacing that fits your mesh. Check the prefab's Grid Canvas settings for reference values.</p>
 
     <h3>The page-turn animation doesn't play</h3>
-    <p>Ensure the Animator has a Trigger parameter named exactly <code>PageTurn</code>. Confirm the Animation Event at the end of the clip calls <code>OnPageTurnComplete</code> on the <code>CalendarPageTurn</code> component, not WallCalendar.</p>
+    <p>Ensure the Animator has a Trigger parameter named exactly <code>PageTurn</code>. Confirm the Animation Event at the end of the clip calls <code>OnPageTurnComplete</code> on the <code>CalendarPageTurn</code> component, not WallCalendar. Note also that with <strong>Suppress On Start</strong> enabled (the default), the very first month change after entering Play Mode is intentionally not animated.</p>
 
     <h3>Can I use this without the wall calendar mesh?</h3>
     <p>Yes — <code>GameCalendar</code> is completely decoupled. Use it as a standalone game clock and subscribe to its events to drive any other system.</p>
 
     <h3>Does this work with a custom time system?</h3>
-    <p><code>GameCalendar</code> implements <code>IGameClock</code> and <code>IScalableClock</code> interfaces. Implement these on your own clock and WallCalendar will work with it.</p>
+    <p>Partially. <code>GameCalendar.ClockInterface</code> exposes the clock through the <code>IGameClock</code>, <code>IScalableClock</code>, and <code>IMonthChangedNotifier</code> interfaces, so your own systems can consume in-game time without depending on <code>GameCalendar</code> directly. <code>WallCalendar</code> itself accepts two time sources: a <code>GameCalendar</code> reference, or Cozy: Stylized Weather via the built-in <a href="#cozy-weather">Cozy integration</a> — it does not accept an arbitrary custom <code>IGameClock</code> implementation.</p>
 
     <h3>Can I have multiple wall calendars in one scene?</h3>
     <p>Yes. Each WallCalendar subscribes to the same GameCalendar singleton independently. All instances update in sync.</p>
@@ -1179,10 +1298,17 @@
   <!-- ── Changelog ────────────────────────────────────────────────────── -->
   <section id="changelog">
     <h2>Changelog</h2>
-    <h3>v1.0.0 — Initial Release</h3>
+    <h3>v1.0.1 — Asset Store Review Fixes</h3>
+    <ul style="margin-top:8px; line-height:2.2;">
+      <li>New: optional <strong>Cozy: Stylized Weather</strong> integration — tick <code>useCozyWeather</code> on WallCalendar with the <code>COZY_WEATHER</code> define to drive the calendar from Cozy's time module</li>
+      <li>Editor: Populate Grid / Populate Day Labels now destroy existing children via <code>Undo.DestroyObjectImmediate</code>, fixing MissingReferenceException errors on play-mode entry</li>
+      <li>GameCalendar date properties now default to a valid date, so reads before Awake (e.g. another script's OnValidate) never see an invalid 0/0/0 date</li>
+      <li>Day grid consolidated to a 35-cell (5×7) layout — months needing a sixth row wrap into the first row's blank cells</li>
+    </ul>
+    <h3 style="margin-top:28px;">v1.0.0 — Initial Release</h3>
     <ul style="margin-top:8px; line-height:2.2;">
       <li>GameCalendar singleton with real-world and in-game clock modes</li>
-      <li>WallCalendar prop with 6×5 day grid, X marks, month illustration atlas</li>
+      <li>WallCalendar prop with 35-cell (5×7) day grid, X marks, month illustration atlas</li>
       <li>CalendarPageTurn with RenderTexture snapshot and skinned mesh animation</li>
       <li>SunController demo component with seasonal arc</li>
       <li>Monday-start and Sunday-start variants</li>
@@ -1208,6 +1334,17 @@
 </div>
 
 <script>
+  function openLightbox(link) {
+    const img = document.getElementById('lightbox-img');
+    img.src = link.getAttribute('href');
+    document.getElementById('lightbox').classList.add('open');
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.getElementById('lightbox-img').src = '';
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
   const links = document.querySelectorAll('.sidebar a[href^="#"]');
   const observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
